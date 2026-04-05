@@ -1,37 +1,53 @@
-/* Bootstrap primary 색상을 하늘색으로 오버라이드 */
+/* 하늘색 테마 변수 */
+:root {
+  --sky: #38bdf8;
+  --sky-dark: #0ea5e9;
+  --sky-darker: #0284c7;
+}
+
+/* 네비게이션 바 */
+.navbar-sky {
+  background-color: var(--sky);
+}
+
+/* 버튼 - primary */
 .btn-primary {
-  background-color: #38bdf8;
-  border-color: #38bdf8;
+  background-color: var(--sky);
+  border-color: var(--sky);
   color: #000;
 }
 
 .btn-primary:hover,
 .btn-primary:focus,
-.btn-primary:active {
-  background-color: #0ea5e9;
-  border-color: #0ea5e9;
+.btn-primary:active,
+.btn-primary:first-child:active {
+  background-color: var(--sky-dark);
+  border-color: var(--sky-dark);
   color: #000;
 }
 
+/* 버튼 - outline-primary */
 .btn-outline-primary {
-  color: #0ea5e9;
-  border-color: #0ea5e9;
+  color: var(--sky-darker);
+  border-color: var(--sky-dark);
 }
 
 .btn-outline-primary:hover {
-  background-color: #0ea5e9;
-  border-color: #0ea5e9;
+  background-color: var(--sky-dark);
+  border-color: var(--sky-dark);
   color: #000;
 }
 
+/* 텍스트/보더 */
 .text-primary {
-  color: #0ea5e9 !important;
+  color: var(--sky-dark) !important;
 }
 
 .border-primary {
-  border-color: #0ea5e9 !important;
+  border-color: var(--sky-dark) !important;
 }
 
+/* 카드 success/danger 테두리 유지 */
 body {
   background-color: #f8f9fa;
 }
