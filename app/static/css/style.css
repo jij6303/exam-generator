@@ -1,3 +1,37 @@
+/* Bootstrap primary 색상을 하늘색으로 오버라이드 */
+.btn-primary {
+  background-color: #38bdf8;
+  border-color: #38bdf8;
+  color: #000;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: #0ea5e9;
+  border-color: #0ea5e9;
+  color: #000;
+}
+
+.btn-outline-primary {
+  color: #0ea5e9;
+  border-color: #0ea5e9;
+}
+
+.btn-outline-primary:hover {
+  background-color: #0ea5e9;
+  border-color: #0ea5e9;
+  color: #000;
+}
+
+.text-primary {
+  color: #0ea5e9 !important;
+}
+
+.border-primary {
+  border-color: #0ea5e9 !important;
+}
+
 body {
   background-color: #f8f9fa;
 }
