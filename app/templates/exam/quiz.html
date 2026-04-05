@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ exam.title }}{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">{{ exam.title }}</h3>
+<form method="POST" action="{{ url_for('exam.submit', exam_id=exam.id) }}">
+  {% for q in questions %}
+  <div class="card mb-3 shadow-sm">
+    <div class="card-body">
+      <p class="fw-semibold">
+        {{ loop.index }}.
+        {% if q.question_type == 'multiple_choice' %}[객관식]
+        {% elif q.question_type == 'short_answer' %}[단답형]
+        {% else %}[OX]
+        {% endif %}
+        {{ q.question_text }}
+      </p>
+
+      {% if q.question_type == 'multiple_choice' %}
+        {% for opt in q.options_list %}
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="answer_{{ q.id }}" value="{{ opt }}" required>
+          <label class="form-check-label">{{ opt }}</label>
+        </div>
+        {% endfor %}
+
+      {% elif q.question_type == 'ox' %}
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="answer_{{ q.id }}" value="O" required>
+          <label class="form-check-label">O</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="answer_{{ q.id }}" value="X">
+          <label class="form-check-label">X</label>
+        </div>
+
+      {% else %}
+        <input type="text" name="answer_{{ q.id }}" class="form-control" placeholder="답을 입력하세요" required>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <button type="submit" class="btn btn-success w-100">제출하기</button>
+</form>
+{% endblock %}

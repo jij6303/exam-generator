@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}채점 결과{% endblock %}
+
+{% block content %}
+<div class="text-center mb-5">
+  <h3>채점 결과</h3>
+  <div class="display-4 fw-bold {% if score / total >= 0.8 %}text-success{% elif score / total >= 0.5 %}text-warning{% else %}text-danger{% endif %}">
+    {{ score }} / {{ total }}
+  </div>
+  <p class="text-muted">정답률 {{ (score / total * 100) | round(1) }}%</p>
+</div>
+
+{% for r in results %}
+<div class="card mb-3 shadow-sm border-{{ 'success' if r.is_correct else 'danger' }}">
+  <div class="card-header bg-{{ 'success' if r.is_correct else 'danger' }} text-white">
+    {{ loop.index }}번 — {{ '정답' if r.is_correct else '오답' }}
+  </div>
+  <div class="card-body">
+    <p class="fw-semibold">{{ r.question.question_text }}</p>
+
+    {% if r.question.question_type == 'multiple_choice' %}
+      <ul class="list-unstyled">
+        {% for opt in r.options_list %}
+        <li class="{% if opt == r.question.correct_answer %}text-success fw-bold{% elif opt == r.user_answer and not r.is_correct %}text-danger text-decoration-line-through{% endif %}">
+          {{ opt }}
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>내 답: <strong>{{ r.user_answer or '(미입력)' }}</strong></p>
+      <p>정답: <strong class="text-success">{{ r.question.correct_answer }}</strong></p>
+    {% endif %}
+
+    {% if r.question.explanation %}
+    <div class="alert alert-info mt-2 mb-0">
+      <strong>해설:</strong> {{ r.question.explanation }}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+
+<div class="d-flex gap-2 mt-4">
+  <a href="{{ url_for('exam.quiz', exam_id=exam.id) }}" class="btn btn-outline-primary">다시 풀기</a>
+  <a href="{{ url_for('exam.dashboard') }}" class="btn btn-primary">대시보드로</a>
+</div>
+{% endblock %}

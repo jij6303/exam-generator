@@ -1,0 +1,9 @@
+/github_bot.json
+.env
+*.db
+uploads/
+__pycache__/
+*.pyc
+.idea/
+*.egg-info/
+dist/
