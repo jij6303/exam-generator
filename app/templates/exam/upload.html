@@ -6,7 +6,7 @@
   <div class="col-md-7">
     {% if is_demo %}
     <div class="alert alert-warning d-flex align-items-center mb-3" role="alert">
-      <strong>데모 모드</strong>&nbsp;— ANTHROPIC_API_KEY가 설정되지 않아 더미 문제로 동작합니다.
+      <strong>데모 모드</strong>&nbsp;— GEMINI_API_KEY가 설정되지 않아 더미 문제로 동작합니다.
       PDF 없이 바로 생성해도 됩니다.
     </div>
     {% endif %}
@@ -27,15 +27,15 @@
           <div class="row g-2">
             <div class="col-4">
               <label class="form-label">객관식</label>
-              <input type="number" name="num_multiple_choice" class="form-control" value="5" min="0" max="20">
+              <input type="number" name="num_multiple_choice" class="form-control" value="5" min="0" max="30">
             </div>
             <div class="col-4">
               <label class="form-label">단답형</label>
-              <input type="number" name="num_short_answer" class="form-control" value="3" min="0" max="20">
+              <input type="number" name="num_short_answer" class="form-control" value="3" min="0" max="30">
             </div>
             <div class="col-4">
               <label class="form-label">OX</label>
-              <input type="number" name="num_ox" class="form-control" value="2" min="0" max="20">
+              <input type="number" name="num_ox" class="form-control" value="2" min="0" max="30">
             </div>
           </div>
           <button type="submit" class="btn btn-primary w-100 mt-4">문제 생성하기</button>
