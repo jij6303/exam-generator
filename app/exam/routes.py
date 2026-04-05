@@ -21,7 +21,7 @@ def dashboard():
 @exam_bp.route("/upload", methods=["GET", "POST"])
 @login_required
 def upload():
-    is_demo = not current_app.config.get("ANTHROPIC_API_KEY")
+    is_demo = not current_app.config.get("GEMINI_API_KEY")
     if request.method == "POST":
         file = request.files.get("pdf")
         text = ""
