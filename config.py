@@ -5,7 +5,9 @@ load_dotenv()
 
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key")
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "sqlite:///exam.db")
+    _db_url = os.environ.get("DATABASE_URL", "sqlite:///exam.db")
+    # Render는 postgres:// 를 반환하지만 SQLAlchemy는 postgresql:// 필요
+    SQLALCHEMY_DATABASE_URI = _db_url.replace("postgres://", "postgresql://", 1)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
