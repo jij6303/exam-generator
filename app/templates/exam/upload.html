@@ -10,18 +10,76 @@
       PDF 없이 바로 생성해도 됩니다.
     </div>
     {% endif %}
+
     <div class="card shadow-sm">
       <div class="card-body p-4">
         <h4 class="mb-4">PDF 업로드 &amp; 문제 생성</h4>
-        <form method="POST" enctype="multipart/form-data">
+        <form method="POST" enctype="multipart/form-data" id="uploadForm">
+          <input type="hidden" name="tmp_filename" id="tmpFilename">
+          <input type="hidden" name="page_start" id="pageStartHidden" value="1">
+          <input type="hidden" name="page_end" id="pageEndHidden">
+
           <div class="mb-3">
             <label class="form-label">시험 제목</label>
             <input type="text" name="title" class="form-control" placeholder="예: 2025 중간고사">
           </div>
+
           <div class="mb-3">
-            <label class="form-label">PDF 파일 {% if is_demo %}<span class="text-muted">(데모 모드에서는 생략 가능)</span>{% endif %}</label>
-            <input type="file" name="pdf" class="form-control" accept=".pdf" {% if not is_demo %}required{% endif %}>
+            <label class="form-label">
+              PDF 파일
+              {% if is_demo %}<span class="text-muted">(데모 모드에서는 생략 가능)</span>{% endif %}
+            </label>
+            <input type="file" name="pdf" id="pdfInput" class="form-control" accept=".pdf"
+                   {% if not is_demo %}required{% endif %}>
+            <div id="analyzeStatus" class="form-text mt-1" style="display:none;"></div>
           </div>
+
+          <!-- 범위 선택 패널 (PDF 분석 후 표시) -->
+          <div id="rangePanel" style="display:none;">
+            <hr>
+            <p class="fw-semibold mb-2">출제 범위 선택</p>
+
+            <!-- 탭 -->
+            <ul class="nav nav-tabs mb-3" id="rangeTabs">
+              <li class="nav-item">
+                <button class="nav-link active" type="button" id="tabPage" onclick="switchTab('page')">
+                  페이지 범위
+                </button>
+              </li>
+              <li class="nav-item" id="chapterTabItem" style="display:none;">
+                <button class="nav-link" type="button" id="tabChapter" onclick="switchTab('chapter')">
+                  챕터 선택
+                </button>
+              </li>
+            </ul>
+
+            <!-- 페이지 범위 탭 -->
+            <div id="pageTab">
+              <div class="row g-2 align-items-end">
+                <div class="col-5">
+                  <label class="form-label">시작 페이지</label>
+                  <input type="number" id="pageStart" class="form-control" value="1" min="1">
+                </div>
+                <div class="col-2 text-center pb-2">~</div>
+                <div class="col-5">
+                  <label class="form-label">끝 페이지</label>
+                  <input type="number" id="pageEnd" class="form-control" min="1">
+                </div>
+              </div>
+              <div class="form-text" id="pageCountInfo"></div>
+            </div>
+
+            <!-- 챕터 선택 탭 -->
+            <div id="chapterTab" style="display:none;">
+              <div id="chapterList" class="border rounded p-3" style="max-height:220px; overflow-y:auto;">
+              </div>
+              <div class="mt-2 d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectAllChapters(true)">전체 선택</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectAllChapters(false)">전체 해제</button>
+              </div>
+            </div>
+          </div>
+
           <hr>
           <p class="fw-semibold">문제 유형별 개수</p>
           <div class="row g-2">
@@ -38,10 +96,114 @@
               <input type="number" name="num_ox" class="form-control" value="2" min="0" max="30">
             </div>
           </div>
-          <button type="submit" class="btn btn-primary w-100 mt-4">문제 생성하기</button>
+
+          <button type="submit" class="btn btn-primary w-100 mt-4" id="submitBtn">문제 생성하기</button>
         </form>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+  let pdfPageCount = 0;
+  let chapters = [];
+  let activeTab = 'page';
+
+  document.getElementById('pdfInput').addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+
+    const status = document.getElementById('analyzeStatus');
+    status.style.display = 'block';
+    status.textContent = 'PDF 분석 중...';
+
+    document.getElementById('rangePanel').style.display = 'none';
+    document.getElementById('tmpFilename').value = '';
+
+    const formData = new FormData();
+    formData.append('pdf', file);
+
+    fetch('{{ url_for("exam.analyze_pdf") }}', {
+      method: 'POST',
+      body: formData,
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          status.textContent = '분석 실패: ' + data.error;
+          return;
+        }
+
+        pdfPageCount = data.page_count;
+        chapters = data.chapters || [];
+
+        document.getElementById('tmpFilename').value = data.tmp_filename;
+        document.getElementById('pageEnd').value = pdfPageCount;
+        document.getElementById('pageEnd').max = pdfPageCount;
+        document.getElementById('pageStart').max = pdfPageCount;
+        document.getElementById('pageCountInfo').textContent = '총 ' + pdfPageCount + '페이지';
+
+        const chapterTabItem = document.getElementById('chapterTabItem');
+        if (chapters.length > 0) {
+          chapterTabItem.style.display = '';
+          renderChapters();
+        } else {
+          chapterTabItem.style.display = 'none';
+        }
+
+        document.getElementById('rangePanel').style.display = 'block';
+        status.textContent = '분석 완료 — 총 ' + pdfPageCount + '페이지'
+          + (chapters.length > 0 ? ', 챕터 ' + chapters.length + '개 감지' : '');
+      })
+      .catch(function () {
+        status.textContent = 'PDF 분석 중 오류가 발생했습니다.';
+      });
+  });
+
+  function renderChapters() {
+    const list = document.getElementById('chapterList');
+    list.innerHTML = chapters.map(function (ch, i) {
+      return '<div class="form-check">'
+        + '<input class="form-check-input chapter-check" type="checkbox" id="ch' + i + '"'
+        + ' data-start="' + ch.page_start + '" data-end="' + ch.page_end + '" checked>'
+        + '<label class="form-check-label" for="ch' + i + '">'
+        + ch.title
+        + ' <span class="text-muted small">(' + ch.page_start + '–' + ch.page_end + 'p)</span>'
+        + '</label>'
+        + '</div>';
+    }).join('');
+  }
+
+  function selectAllChapters(checked) {
+    document.querySelectorAll('.chapter-check').forEach(function (cb) { cb.checked = checked; });
+  }
+
+  function switchTab(tab) {
+    activeTab = tab;
+    document.getElementById('pageTab').style.display = tab === 'page' ? '' : 'none';
+    document.getElementById('chapterTab').style.display = tab === 'chapter' ? '' : 'none';
+    document.getElementById('tabPage').classList.toggle('active', tab === 'page');
+    document.getElementById('tabChapter').classList.toggle('active', tab === 'chapter');
+  }
+
+  document.getElementById('uploadForm').addEventListener('submit', function () {
+    if (!document.getElementById('tmpFilename').value) return;
+
+    if (activeTab === 'page') {
+      document.getElementById('pageStartHidden').value = document.getElementById('pageStart').value;
+      document.getElementById('pageEndHidden').value = document.getElementById('pageEnd').value;
+    } else {
+      var checked = Array.from(document.querySelectorAll('.chapter-check:checked'));
+      if (checked.length === 0) {
+        document.getElementById('pageStartHidden').value = 1;
+        document.getElementById('pageEndHidden').value = pdfPageCount;
+      } else {
+        var starts = checked.map(function (cb) { return parseInt(cb.dataset.start); });
+        var ends = checked.map(function (cb) { return parseInt(cb.dataset.end); });
+        document.getElementById('pageStartHidden').value = Math.min.apply(null, starts);
+        document.getElementById('pageEndHidden').value = Math.max.apply(null, ends);
+      }
+    }
+  });
+</script>
 {% endblock %}
