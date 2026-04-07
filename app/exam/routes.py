@@ -58,14 +58,7 @@ def upload():
 
             page_start = int(request.form.get("page_start") or 1)
             page_end_raw = request.form.get("page_end", "").strip()
-
-            try:
-                from app.services.pdf_service import get_pdf_info as _info
-                page_count = _info(save_path)["page_count"]
-            except Exception:
-                page_count = 9999
-
-            page_end = int(page_end_raw) if page_end_raw else page_count
+            page_end = int(page_end_raw) if page_end_raw else 9999
 
             try:
                 text = extract_text_by_pages(save_path, page_start, page_end)
