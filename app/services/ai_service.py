@@ -1,4 +1,5 @@
 import json
+import random
 from google import genai
 from flask import current_app
 
@@ -276,7 +277,12 @@ def _dummy_questions(num_multiple_choice: int, num_short_answer: int, num_ox: in
         },
     ]
 
-    return mc_pool[:num_multiple_choice] + sa_pool[:num_short_answer] + ox_pool[:num_ox]
+    selected_mc = random.sample(mc_pool, min(num_multiple_choice, len(mc_pool)))
+    selected_sa = random.sample(sa_pool, min(num_short_answer, len(sa_pool)))
+    selected_ox = random.sample(ox_pool, min(num_ox, len(ox_pool)))
+    questions = selected_mc + selected_sa + selected_ox
+    random.shuffle(questions)
+    return questions
 
 
 def generate_questions(
@@ -292,7 +298,16 @@ def generate_questions(
 
     client = genai.Client(api_key=api_key)
 
+    chunk_size = 8000
+    max_start = max(0, len(text) - chunk_size)
+    start = random.randint(0, max_start)
+    text_chunk = text[start : start + chunk_size]
+
+    seed = random.randint(1, 10000)
     prompt = f"""{SYSTEM_PROMPT}
+
+[난수 시드: {seed}] — 이 값을 참고하여 매번 다양하고 새로운 문제를 출제하세요.
+텍스트의 여러 부분에서 고르게 문제를 선택하고, 이전과 다른 개념을 다루세요.
 
 아래 텍스트를 읽고 다음 문제를 생성하세요:
 - 객관식(4지선다) {num_multiple_choice}문제
@@ -300,7 +315,7 @@ def generate_questions(
 - OX 문제 {num_ox}문제
 
 텍스트:
-{text[:8000]}"""
+{text_chunk}"""
 
     response = client.models.generate_content(
         model="gemini-2.5-flash",
@@ -312,4 +327,6 @@ def generate_questions(
         raw = raw.split("```")[1]
         if raw.startswith("json"):
             raw = raw[4:]
-    return json.loads(raw)
+    questions = json.loads(raw)
+    random.shuffle(questions)
+    return questions
