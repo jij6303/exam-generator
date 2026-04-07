@@ -14,6 +14,7 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     exams = db.relationship("Exam", backref="user", lazy=True)
+    wrong_answers = db.relationship("WrongAnswer", backref="user", lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -55,3 +56,23 @@ class Question(db.Model):
     correct_answer = db.Column(db.Text, nullable=False)
     explanation = db.Column(db.Text)
     order = db.Column(db.Integer, default=0)
+
+
+class WrongAnswer(db.Model):
+    __tablename__ = "wrong_answers"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    # 출처 시험 제목 (시험 삭제 후에도 유지하기 위해 텍스트로 저장)
+    source_exam_title = db.Column(db.String(200))
+
+    # 문제 데이터 직접 저장 (시험/문제 삭제와 무관하게 유지)
+    question_type = db.Column(db.String(20), nullable=False)
+    question_text = db.Column(db.Text, nullable=False)
+    options = db.Column(db.Text)
+    correct_answer = db.Column(db.Text, nullable=False)
+    explanation = db.Column(db.Text)
+
+    added_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_mastered = db.Column(db.Boolean, default=False)
