@@ -1,10 +1,11 @@
 import json
 import os
 import uuid
+from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from app import db
-from app.models import Exam, Question
+from app.models import Exam, Question, WrongAnswer
 from app.services.pdf_service import extract_text
 from app.services.ai_service import generate_questions
 
@@ -15,7 +16,8 @@ exam_bp = Blueprint("exam", __name__)
 @login_required
 def dashboard():
     exams = Exam.query.filter_by(user_id=current_user.id).order_by(Exam.created_at.desc()).all()
-    return render_template("exam/dashboard.html", exams=exams)
+    wrong_count = WrongAnswer.query.filter_by(user_id=current_user.id, is_mastered=False).count()
+    return render_template("exam/dashboard.html", exams=exams, wrong_count=wrong_count)
 
 
 @exam_bp.route("/upload", methods=["GET", "POST"])
@@ -108,9 +110,113 @@ def submit(exam_id):
             "options_list": json.loads(q.options) if q.options else [],
         })
 
-    total = len(questions)
-    return render_template("exam/result.html", exam=exam, results=results, score=score, total=total)
+    # 오답 자동 저장
+    for r in results:
+        if not r["is_correct"]:
+            q = r["question"]
+            existing = WrongAnswer.query.filter_by(
+                user_id=current_user.id,
+                question_text=q.question_text,
+                correct_answer=q.correct_answer,
+            ).first()
+            if existing:
+                existing.added_at = datetime.utcnow()
+                existing.is_mastered = False
+            else:
+                db.session.add(WrongAnswer(
+                    user_id=current_user.id,
+                    source_exam_title=exam.title,
+                    question_type=q.question_type,
+                    question_text=q.question_text,
+                    options=q.options,
+                    correct_answer=q.correct_answer,
+                    explanation=q.explanation,
+                ))
+    db.session.commit()
 
+    wrong_count = sum(1 for r in results if not r["is_correct"])
+    total = len(questions)
+    return render_template(
+        "exam/result.html",
+        exam=exam, results=results, score=score, total=total, wrong_count=wrong_count,
+    )
+
+
+# ── 오답노트 ──────────────────────────────────────────────
+
+@exam_bp.route("/wrong-answers")
+@login_required
+def wrong_answers():
+    entries = (
+        WrongAnswer.query
+        .filter_by(user_id=current_user.id)
+        .order_by(WrongAnswer.is_mastered, WrongAnswer.added_at.desc())
+        .all()
+    )
+    for e in entries:
+        e.options_list = json.loads(e.options) if e.options else []
+    unmastered = sum(1 for e in entries if not e.is_mastered)
+    return render_template("exam/wrong_answers.html", entries=entries, unmastered=unmastered)
+
+
+@exam_bp.route("/wrong-answers/quiz")
+@login_required
+def wrong_answers_quiz():
+    entries = (
+        WrongAnswer.query
+        .filter_by(user_id=current_user.id, is_mastered=False)
+        .order_by(WrongAnswer.added_at.desc())
+        .all()
+    )
+    if not entries:
+        flash("풀 문제가 없습니다. 오답노트가 비어 있거나 모두 완료했습니다.", "info")
+        return redirect(url_for("exam.wrong_answers"))
+    for e in entries:
+        e.options_list = json.loads(e.options) if e.options else []
+    return render_template("exam/wrong_answers_quiz.html", entries=entries)
+
+
+@exam_bp.route("/wrong-answers/quiz/submit", methods=["POST"])
+@login_required
+def wrong_answers_quiz_submit():
+    entry_ids = request.form.getlist("entry_ids")
+    results = []
+    mastered_count = 0
+
+    for eid in entry_ids:
+        entry = WrongAnswer.query.filter_by(id=int(eid), user_id=current_user.id).first()
+        if not entry:
+            continue
+        user_answer = request.form.get(f"answer_{eid}", "").strip()
+        is_correct = _check_answer(entry, user_answer)
+        if is_correct:
+            entry.is_mastered = True
+            mastered_count += 1
+        results.append({
+            "entry": entry,
+            "user_answer": user_answer,
+            "is_correct": is_correct,
+            "options_list": json.loads(entry.options) if entry.options else [],
+        })
+
+    db.session.commit()
+    remaining = WrongAnswer.query.filter_by(user_id=current_user.id, is_mastered=False).count()
+    return render_template(
+        "exam/wrong_answers_result.html",
+        results=results, mastered_count=mastered_count, remaining=remaining,
+    )
+
+
+@exam_bp.route("/wrong-answers/<int:entry_id>/delete", methods=["POST"])
+@login_required
+def delete_wrong_answer(entry_id):
+    entry = WrongAnswer.query.filter_by(id=entry_id, user_id=current_user.id).first_or_404()
+    db.session.delete(entry)
+    db.session.commit()
+    return redirect(url_for("exam.wrong_answers"))
+
+
+# ── 시험 삭제 / 채점 헬퍼 ──────────────────────────────────
 
 @exam_bp.route("/exam/<int:exam_id>/delete", methods=["POST"])
 @login_required
@@ -122,11 +228,11 @@ def delete_exam(exam_id):
     return redirect(url_for("exam.dashboard"))
 
 
-def _check_answer(question: Question, user_answer: str) -> bool:
+def _check_answer(question, user_answer: str) -> bool:
+    """Question 또는 WrongAnswer 객체를 모두 처리한다."""
     correct = question.correct_answer.strip()
     if question.question_type == "ox":
         return user_answer.upper() == correct.upper()
     if question.question_type == "multiple_choice":
         return user_answer == correct
-    # 단답형: 대소문자 무시, 공백 무시
     return user_answer.replace(" ", "").lower() == correct.replace(" ", "").lower()

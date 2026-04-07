@@ -4,7 +4,17 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h3>내 시험 목록</h3>
-  <a href="{{ url_for('exam.upload') }}" class="btn btn-primary">+ 새 시험 만들기</a>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('exam.wrong_answers') }}" class="btn btn-outline-warning position-relative">
+      오답노트
+      {% if wrong_count %}
+      <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+        {{ wrong_count }}
+      </span>
+      {% endif %}
+    </a>
+    <a href="{{ url_for('exam.upload') }}" class="btn btn-primary">+ 새 시험 만들기</a>
+  </div>
 </div>
 
 {% if exams %}

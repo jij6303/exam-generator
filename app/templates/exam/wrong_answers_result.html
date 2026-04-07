@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}오답노트 결과{% endblock %}
+
+{% block content %}
+<div class="text-center mb-5">
+  <h3>오답노트 결과</h3>
+  <div class="display-4 fw-bold {% if mastered_count == results|length %}text-success{% elif mastered_count > 0 %}text-warning{% else %}text-danger{% endif %}">
+    {{ mastered_count }} / {{ results|length }}
+  </div>
+  <p class="text-muted">이번에 완료한 문제</p>
+  {% if remaining == 0 %}
+  <div class="alert alert-success d-inline-block mt-2">
+    오답노트를 모두 완료했습니다!
+  </div>
+  {% else %}
+  <p class="text-muted small">남은 미완료 문제: <strong>{{ remaining }}개</strong></p>
+  {% endif %}
+</div>
+
+{% for r in results %}
+<div class="card mb-3 shadow-sm border-{{ 'success' if r.is_correct else 'danger' }}">
+  <div class="card-header bg-{{ 'success' if r.is_correct else 'danger' }} text-white">
+    {{ loop.index }}번 — {{ '완료' if r.is_correct else '아직 미완료' }}
+  </div>
+  <div class="card-body">
+    <p class="fw-semibold">{{ r.entry.question_text }}</p>
+
+    {% if r.entry.question_type == 'multiple_choice' %}
+      <ul class="list-unstyled">
+        {% for opt in r.options_list %}
+        <li class="{% if opt == r.entry.correct_answer %}text-success fw-bold{% elif opt == r.user_answer and not r.is_correct %}text-danger text-decoration-line-through{% endif %}">
+          {{ opt }}
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>내 답: <strong>{{ r.user_answer or '(미입력)' }}</strong></p>
+      <p>정답: <strong class="text-success">{{ r.entry.correct_answer }}</strong></p>
+    {% endif %}
+
+    {% if r.entry.explanation %}
+    <div class="alert alert-info mt-2 mb-0">
+      <strong>해설:</strong> {{ r.entry.explanation }}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+
+<div class="d-flex gap-2 mt-4">
+  {% if remaining %}
+  <a href="{{ url_for('exam.wrong_answers_quiz') }}" class="btn btn-primary">남은 오답 계속 풀기</a>
+  {% endif %}
+  <a href="{{ url_for('exam.wrong_answers') }}" class="btn btn-outline-secondary">오답노트로</a>
+  <a href="{{ url_for('exam.dashboard') }}" class="btn btn-outline-primary">대시보드로</a>
+</div>
+{% endblock %}

@@ -40,7 +40,14 @@
 </div>
 {% endfor %}
 
-<div class="d-flex gap-2 mt-4">
+{% if wrong_count %}
+<div class="alert alert-warning mt-4 d-flex justify-content-between align-items-center">
+  <span>틀린 문제 <strong>{{ wrong_count }}개</strong>가 오답노트에 저장됐습니다.</span>
+  <a href="{{ url_for('exam.wrong_answers') }}" class="btn btn-warning btn-sm">오답노트 보기</a>
+</div>
+{% endif %}
+
+<div class="d-flex gap-2 mt-3">
   <a href="{{ url_for('exam.quiz', exam_id=exam.id) }}" class="btn btn-outline-primary">다시 풀기</a>
   <a href="{{ url_for('exam.dashboard') }}" class="btn btn-primary">대시보드로</a>
 </div>

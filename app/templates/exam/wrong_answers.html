@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}오답노트{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h3 class="mb-0">오답노트</h3>
+    <p class="text-muted small mb-0">
+      전체 {{ entries|length }}문제 중
+      <span class="text-danger fw-semibold">미완료 {{ unmastered }}개</span>
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    {% if unmastered %}
+    <a href="{{ url_for('exam.wrong_answers_quiz') }}" class="btn btn-primary">오답 풀기 ({{ unmastered }})</a>
+    {% endif %}
+    <a href="{{ url_for('exam.dashboard') }}" class="btn btn-outline-secondary">대시보드</a>
+  </div>
+</div>
+
+{% if entries %}
+  {% for e in entries %}
+  <div class="card mb-3 shadow-sm {% if e.is_mastered %}border-success opacity-75{% else %}border-danger{% endif %}">
+    <div class="card-header d-flex justify-content-between align-items-center
+                {% if e.is_mastered %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
+      <span>
+        {% if e.question_type == 'multiple_choice' %}[객관식]
+        {% elif e.question_type == 'short_answer' %}[단답형]
+        {% else %}[OX]{% endif %}
+        &nbsp;
+        {% if e.is_mastered %}완료{% else %}미완료{% endif %}
+      </span>
+      <small>출처: {{ e.source_exam_title or '알 수 없음' }} &nbsp;|&nbsp; {{ e.added_at.strftime('%m/%d') }}</small>
+    </div>
+    <div class="card-body">
+      <p class="fw-semibold mb-2">{{ e.question_text }}</p>
+
+      {% if e.question_type == 'multiple_choice' %}
+        <ul class="list-unstyled mb-2">
+          {% for opt in e.options_list %}
+          <li class="{% if opt == e.correct_answer %}text-success fw-bold{% endif %}">{{ opt }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="mb-1">정답: <strong class="text-success">{{ e.correct_answer }}</strong></p>
+      {% endif %}
+
+      {% if e.explanation %}
+      <div class="alert alert-info mb-0 py-2">
+        <strong>해설:</strong> {{ e.explanation }}
+      </div>
+      {% endif %}
+    </div>
+    <div class="card-footer text-end">
+      <form method="POST" action="{{ url_for('exam.delete_wrong_answer', entry_id=e.id) }}"
+            onsubmit="return confirm('오답노트에서 삭제하시겠습니까?')" style="display:inline;">
+        <button type="submit" class="btn btn-outline-danger btn-sm">삭제</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+
+{% else %}
+  <div class="text-center text-muted py-5">
+    <p class="fs-5">오답노트가 비어 있습니다.</p>
+    <p class="small">시험을 풀면 틀린 문제가 자동으로 저장됩니다.</p>
+    <a href="{{ url_for('exam.dashboard') }}" class="btn btn-primary">시험 목록으로</a>
+  </div>
+{% endif %}
+{% endblock %}

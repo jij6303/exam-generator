@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}오답노트 풀기{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="mb-0">오답노트 풀기</h3>
+  <span class="text-muted">총 {{ entries|length }}문제</span>
+</div>
+
+<form method="POST" action="{{ url_for('exam.wrong_answers_quiz_submit') }}">
+  {% for e in entries %}
+  <input type="hidden" name="entry_ids" value="{{ e.id }}">
+  <div class="card mb-3 shadow-sm">
+    <div class="card-body">
+      <p class="fw-semibold">
+        {{ loop.index }}.
+        {% if e.question_type == 'multiple_choice' %}[객관식]
+        {% elif e.question_type == 'short_answer' %}[단답형]
+        {% else %}[OX]{% endif %}
+        {{ e.question_text }}
+      </p>
+      <p class="text-muted small mb-2">출처: {{ e.source_exam_title or '알 수 없음' }}</p>
+
+      {% if e.question_type == 'multiple_choice' %}
+        {% for opt in e.options_list %}
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="answer_{{ e.id }}" value="{{ opt }}" required>
+          <label class="form-check-label">{{ opt }}</label>
+        </div>
+        {% endfor %}
+
+      {% elif e.question_type == 'ox' %}
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="answer_{{ e.id }}" value="O" required>
+          <label class="form-check-label">O</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="answer_{{ e.id }}" value="X">
+          <label class="form-check-label">X</label>
+        </div>
+
+      {% else %}
+        <input type="text" name="answer_{{ e.id }}" class="form-control" placeholder="답을 입력하세요" required>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <button type="submit" class="btn btn-primary w-100">제출하기</button>
+</form>
+{% endblock %}
