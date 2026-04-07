@@ -1,6 +1,8 @@
 import json
 import random
+import time
 from google import genai
+from google.genai.errors import ServerError
 from flask import current_app
 
 SYSTEM_PROMPT = """당신은 교육 전문가입니다. 주어진 텍스트를 바탕으로 시험 문제를 생성합니다.
@@ -317,10 +319,24 @@ def generate_questions(
 텍스트:
 {text_chunk}"""
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-    )
+    last_error = None
+    for attempt in range(4):  # 최초 1회 + 재시도 3회
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
+            last_error = None
+            break
+        except ServerError as e:
+            if e.code != 503:
+                raise
+            last_error = e
+            if attempt < 3:
+                time.sleep(2)
+
+    if last_error is not None:
+        raise last_error
 
     raw = response.text.strip()
     if raw.startswith("```"):
