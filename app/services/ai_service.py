@@ -1,5 +1,7 @@
 import json
+import time
 from google import genai
+from google.api_core import exceptions as google_exceptions
 from flask import current_app
 
 SYSTEM_PROMPT = """당신은 교육 전문가입니다. 주어진 텍스트를 바탕으로 시험 문제를 생성합니다.
@@ -302,10 +304,19 @@ def generate_questions(
 텍스트:
 {text[:8000]}"""
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-    )
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
+            break
+        except google_exceptions.ServiceUnavailable:
+            if attempt == max_retries - 1:
+                raise
+            wait = 2 ** (attempt + 1)
+            time.sleep(wait)
 
     raw = response.text.strip()
     if raw.startswith("```"):
