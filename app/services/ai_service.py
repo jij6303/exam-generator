@@ -1,4 +1,5 @@
 import json
+import re
 import random
 import time
 import anthropic
@@ -344,12 +345,33 @@ def generate_questions(
         raise last_error
 
     raw = response.content[0].text.strip()
-    # 마크다운 코드블록 제거
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    raw = raw.strip()
-    questions = json.loads(raw)
+    questions = _parse_questions_json(raw)
     random.shuffle(questions)
     return questions
+
+
+def _parse_questions_json(raw: str) -> list[dict]:
+    """Claude 응답에서 JSON 배열을 추출한다. 마크다운 블록이나 앞뒤 텍스트가 있어도 처리한다."""
+    # 마크다운 코드블록 제거
+    if "```" in raw:
+        match = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw)
+        if match:
+            raw = match.group(1)
+
+    raw = raw.strip()
+
+    # 바로 파싱 시도
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        pass
+
+    # JSON 배열 부분만 추출 시도 ([...] 블록)
+    match = re.search(r"\[[\s\S]*\]", raw)
+    if match:
+        try:
+            return json.loads(match.group())
+        except json.JSONDecodeError:
+            pass
+
+    raise ValueError(f"Claude 응답에서 유효한 JSON을 파싱할 수 없습니다. 응답 앞부분: {raw[:200]!r}")
