@@ -322,10 +322,15 @@ def generate_questions(
         try:
             response = client.messages.create(
                 model="claude-haiku-4-5-20251001",
-                max_tokens=4096,
+                max_tokens=8192,
                 system=SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}],
             )
+            if response.stop_reason == "max_tokens":
+                last_error = RuntimeError("Claude 응답이 잘렸습니다 (max_tokens 초과). 재시도합니다.")
+                if attempt < 3:
+                    time.sleep(2)
+                continue
             last_error = None
             break
         except anthropic.APIStatusError as e:
@@ -339,10 +344,12 @@ def generate_questions(
         raise last_error
 
     raw = response.content[0].text.strip()
+    # 마크다운 코드블록 제거
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
             raw = raw[4:]
+    raw = raw.strip()
     questions = json.loads(raw)
     random.shuffle(questions)
     return questions
