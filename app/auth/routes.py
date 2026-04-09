@@ -12,20 +12,19 @@ def register():
         return redirect(url_for("exam.dashboard"))
 
     if request.method == "POST":
-        email = request.form.get("email", "").strip()
         username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
+        pin = request.form.get("pin", "").strip()
 
-        if User.query.filter_by(email=email).first():
-            flash("이미 사용 중인 이메일입니다.", "danger")
+        if not pin.isdigit() or len(pin) != 4:
+            flash("PIN은 숫자 4자리여야 합니다.", "danger")
             return render_template("auth/register.html")
 
         if User.query.filter_by(username=username).first():
-            flash("이미 사용 중인 사용자명입니다.", "danger")
+            flash("이미 사용 중인 이름입니다.", "danger")
             return render_template("auth/register.html")
 
-        user = User(email=email, username=username)
-        user.set_password(password)
+        user = User(username=username)
+        user.set_pin(pin)
         db.session.add(user)
         db.session.commit()
 
@@ -41,17 +40,17 @@ def login():
         return redirect(url_for("exam.dashboard"))
 
     if request.method == "POST":
-        email = request.form.get("email", "").strip()
-        password = request.form.get("password", "")
+        username = request.form.get("username", "").strip()
+        pin = request.form.get("pin", "").strip()
         remember = bool(request.form.get("remember"))
 
-        user = User.query.filter_by(email=email).first()
-        if user and user.check_password(password):
+        user = User.query.filter_by(username=username).first()
+        if user and user.check_pin(pin):
             login_user(user, remember=remember)
             next_page = request.args.get("next")
             return redirect(next_page or url_for("exam.dashboard"))
 
-        flash("이메일 또는 비밀번호가 올바르지 않습니다.", "danger")
+        flash("이름 또는 PIN이 올바르지 않습니다.", "danger")
 
     return render_template("auth/login.html")
 
