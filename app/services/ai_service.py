@@ -1,8 +1,7 @@
 import json
 import random
 import time
-from google import genai
-from google.genai.errors import ServerError
+import anthropic
 from flask import current_app
 
 SYSTEM_PROMPT = """당신은 교육 전문가입니다. 주어진 텍스트를 바탕으로 시험 문제를 생성합니다.
@@ -293,12 +292,12 @@ def generate_questions(
     num_short_answer: int = 3,
     num_ox: int = 2,
 ) -> list[dict]:
-    """Gemini API로 문제를 생성한다. API 키가 없으면 더미 문제를 반환한다."""
-    api_key = current_app.config.get("GEMINI_API_KEY")
+    """Claude API로 문제를 생성한다. API 키가 없으면 더미 문제를 반환한다."""
+    api_key = current_app.config.get("ANTHROPIC_API_KEY")
     if not api_key:
         return _dummy_questions(num_multiple_choice, num_short_answer, num_ox)
 
-    client = genai.Client(api_key=api_key)
+    client = anthropic.Anthropic(api_key=api_key)
 
     chunk_size = 8000
     max_start = max(0, len(text) - chunk_size)
@@ -306,9 +305,7 @@ def generate_questions(
     text_chunk = text[start : start + chunk_size]
 
     seed = random.randint(1, 10000)
-    prompt = f"""{SYSTEM_PROMPT}
-
-[난수 시드: {seed}] — 이 값을 참고하여 매번 다양하고 새로운 문제를 출제하세요.
+    user_prompt = f"""[난수 시드: {seed}] — 이 값을 참고하여 매번 다양하고 새로운 문제를 출제하세요.
 텍스트의 여러 부분에서 고르게 문제를 선택하고, 이전과 다른 개념을 다루세요.
 
 아래 텍스트를 읽고 다음 문제를 생성하세요:
@@ -320,16 +317,19 @@ def generate_questions(
 {text_chunk}"""
 
     last_error = None
+    response = None
     for attempt in range(4):  # 최초 1회 + 재시도 3회
         try:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
+            response = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=4096,
+                system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_prompt}],
             )
             last_error = None
             break
-        except ServerError as e:
-            if e.code != 503:
+        except anthropic.APIStatusError as e:
+            if e.status_code not in (503, 529):
                 raise
             last_error = e
             if attempt < 3:
@@ -338,7 +338,7 @@ def generate_questions(
     if last_error is not None:
         raise last_error
 
-    raw = response.text.strip()
+    raw = response.content[0].text.strip()
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
