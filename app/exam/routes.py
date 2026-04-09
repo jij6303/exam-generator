@@ -44,7 +44,7 @@ def analyze_pdf():
 @exam_bp.route("/upload", methods=["GET", "POST"])
 @login_required
 def upload():
-    is_demo = not current_app.config.get("GEMINI_API_KEY")
+    is_demo = not current_app.config.get("ANTHROPIC_API_KEY")
     if request.method == "POST":
         tmp_filename = request.form.get("tmp_filename", "").strip()
         text = ""
